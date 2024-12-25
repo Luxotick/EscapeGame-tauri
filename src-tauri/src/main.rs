@@ -1,6 +1,8 @@
 use std::fs::{self, File};
 use std::io::Write;
-use tauri::Manager;
+use tauri::{Manager};
+use std::error::Error;
+use std::path::{PathBuf};
 use directories::UserDirs; // directories crate'ini kullanıyoruz
 
 // Belgeler klasöründe bir dosya oluştur
@@ -19,7 +21,7 @@ fn create_exe_file() -> Result<String, String> {
 // Belgeler klasöründe dosya adını kontrol et
 #[tauri::command]
 fn check_file_name() -> Result<bool, String> {
-    let user_dirs = UserDirs::new().ok_or("Could not locate user directories")?;
+    let user_dirs: UserDirs = UserDirs::new().ok_or("Could not locate user directories")?;
     let documents_dir = user_dirs.document_dir().ok_or("Could not locate Documents directory")?;
     let target_file = documents_dir.join("merhaba dunya.exe");
 
@@ -30,9 +32,33 @@ fn check_file_name() -> Result<bool, String> {
     }
 }
 
+#[tauri::command]
+async fn copy_image() -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get("http://localhost:3000/images/sys.png")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if response.status().is_success() {
+        let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+        // Dosyayı kaydetmek için hedef yolu belirleyin
+        let user_dirs = UserDirs::new().ok_or("Could not locate user directories")?;
+        let documents_dir = user_dirs.document_dir().ok_or("Could not locate Documents directory")?;
+        let file_path = documents_dir.join("sys.png");
+
+        fs::write(&file_path, bytes).map_err(|e| e.to_string())?;
+        Ok(format!("Image saved to {:?}", file_path))
+    } else {
+        Err("Failed to fetch image".to_string())
+    }
+}
+
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![create_exe_file, check_file_name])
+        .invoke_handler(tauri::generate_handler![create_exe_file, check_file_name, copy_image])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");
 }
