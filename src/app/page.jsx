@@ -1,92 +1,371 @@
-"use client"; 
-import { useState, useEffect } from "react"; 
-import { invoke } from "@tauri-apps/api/core"; 
+"use client";
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
-export default function App() { 
-  const questions = [ 
-    { 
-      question: "İlk soruya hoş geldiniz.. Bu bilgisayar içindeki 'belgeler' klasöründe bir exe dosyası gizledik, dosyanın ismini türkçe karşılığı ile değiştirip submit answer tuşuna basın.", 
-      correctAnswer: "", 
-      requiresInput: false, 
-      inputType: "file", 
-    }, 
-    { 
-      question: "İkinci soruya geçtiniz... Biraz da frc üzerinden gidelim, 9 eksenli teker modülünün ismi?", 
-      correctAnswer: "swerve", 
-      requiresInput: true, 
-      inputType: "text", 
-    }, 
-    { 
-      question: "Üçüncü soru... Bu seferde belgeler içerisindeki bir png dosyasının içeriğine bir kelime gizledik onu bulabilir misin? Renk ayarlarıyla oynamayı düşünebilirsin :==)", 
-      correctAnswer: "dayıoğlu", 
-      requiresInput: true, 
-      inputType: "text", 
-    }, 
+/* 
+  ====================
+  LABİRENT OYUNU (4. SORU)
+  ====================
+*/
+function generateMaze(rows = 25, cols = 25) {
+  const maze = Array.from({ length: rows }, () => Array(cols).fill(1));
+  const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+
+  const directions = [
+    [-1, 0], // yukarı
+    [0, 1],  // sağ
+    [1, 0],  // aşağı
+    [0, -1], // sol
   ];
 
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0); 
-  const [userAnswer, setUserAnswer] = useState(""); 
-  const [isCorrect, setIsCorrect] = useState(false); 
-  const [errorMessage, setErrorMessage] = useState(""); 
-  const [question, setQuestion] = useState(questions[0].question); 
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
 
-  useEffect(() => { 
-    const createFile = async () => { 
-      try { 
-        const result = await invoke("create_exe_file"); 
-        console.log(`File created at: ${result}`); 
-      } catch (error) { 
-        console.error("Error creating file:", error); 
-        setErrorMessage("Dosya oluşturulurken bir hata oluştu."); 
-      } 
-    }; 
+  function carvePath(r, c) {
+    visited[r][c] = true;
+    maze[r][c] = 0;
+    const dirs = shuffle([...directions]);
+    for (const [dr, dc] of dirs) {
+      const nr = r + 2 * dr;
+      const nc = c + 2 * dc;
+      if (
+        nr >= 0 && nr < rows &&
+        nc >= 0 && nc < cols &&
+        !visited[nr][nc]
+      ) {
+        // Aradaki hücreyi de aç
+        maze[r + dr][c + dc] = 0;
+        visited[nr][nc] = true;
+        maze[nr][nc] = 0;
+        carvePath(nr, nc);
+      }
+    }
+  }
 
-    createFile(); 
-  }, []); 
+  carvePath(0, 0);
+  // çıkış
+  maze[rows - 1][cols - 1] = 2;
+  return maze;
+}
 
-  const fileCheck = async () => { 
-    try { 
-      const result = await invoke("check_file_name"); 
-      if (result) { 
-        setIsCorrect(true); 
-      } else { 
-        alert("w"); 
-      } 
-    } catch (error) { 
-      console.error("Error checking file name:", error); 
-      setErrorMessage("Dosya adı kontrol edilirken bir hata oluştu."); 
-    } 
-  }; 
+function canReachExit(maze, sr, sc) {
+  const rows = 25;
+  const cols = 25;
+  const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+  const queue = [[sr, sc]];
+  visited[sr][sc] = true;
 
-  const checkAnswer = async () => { 
-    const currentQuestion = questions[currentQuestionIndex]; 
+  const dirs = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ];
 
-    if (currentQuestion.requiresInput) { 
-      if (userAnswer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase()) { 
-        setIsCorrect(true); 
-        setQuestion("Tebrikler! Soruyu bildiniz."); 
-      } else { 
-        setErrorMessage("Cevabınız yanlış, tekrar deneyin."); 
-      } 
-    } else { 
-      if (currentQuestion.inputType === "file") { 
-        try { 
-          const result = await invoke("check_file_name"); 
-          if (result) { 
-            console.log("File name is correct."); 
-            setIsCorrect(true); 
-            setQuestion("Tebrikler! Soruyu bildiniz."); 
-          } else { 
-            setIsCorrect(false); 
-            alert("Yanlış! Dosya adı yanlış."); 
-          } 
-        } catch (error) { 
-          setIsCorrect(false); 
-          alert("Dosya adı kontrolünde bir hata oluştu."); 
-        } 
-      } 
-    } 
-  }; 
+  while (queue.length > 0) {
+    const [r, c] = queue.shift();
+    if (maze[r][c] === 2) return true; // çıkış
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr;
+      const nc = c + dc;
+      if (
+        nr >= 0 &&
+        nr < rows &&
+        nc >= 0 &&
+        nc < cols &&
+        !visited[nr][nc] &&
+        maze[nr][nc] !== 1
+      ) {
+        visited[nr][nc] = true;
+        queue.push([nr, nc]);
+      }
+    }
+  }
+  return false;
+}
+
+function MazeGame({
+  onComplete,
+  enableRotation,
+  rotationMin,
+  rotationMax,
+  mapChangeInterval,
+}) {
+  const [maze, setMaze] = useState([]);
+  const [playerPos, setPlayerPos] = useState({ row: 0, col: 0 });
+  const [rotation, setRotation] = useState(0);
+
+  // İlk labirent oluşturma
+  useEffect(() => {
+    const newMaze = generateMaze(25, 25);
+    setMaze(newMaze);
+  }, []);
+
+  function applyRandomRotation() {
+    const angles = [45, 90, 135, 180, 225, 270, 315];
+    let newAngle = angles[Math.floor(Math.random() * angles.length)];
+    while (newAngle === rotation) {
+      newAngle = angles[Math.floor(Math.random() * angles.length)];
+    }
+    setRotation(newAngle);
+  }
+
+  // Dönme (enableRotation)
+  useEffect(() => {
+    if (!enableRotation) return;
+    const minDelay = rotationMin <= 0 ? 1 : rotationMin;
+    const maxDelay = rotationMax < minDelay ? minDelay : rotationMax;
+
+    const randomInterval = Math.random() * (maxDelay - minDelay) + minDelay;
+    const timer = setTimeout(() => {
+      applyRandomRotation();
+    }, randomInterval * 1000);
+
+    return () => clearTimeout(timer);
+  }, [rotation, enableRotation, rotationMin, rotationMax]);
+
+  // Yol Değiştirme
+  useEffect(() => {
+    if (!mapChangeInterval || mapChangeInterval < 400) return;
+    if (maze.length === 0) return;
+
+    const interval = setInterval(() => {
+      const mazeCopy = maze.map((row) => [...row]);
+      const changedCells = [];
+
+      let togglesCount = 2;
+      while (togglesCount > 0) {
+        const rr = Math.floor(Math.random() * 25);
+        const cc = Math.floor(Math.random() * 25);
+
+        // exit & player dokunma
+        if ((rr === 24 && cc === 24) || (rr === playerPos.row && cc === playerPos.col)) {
+          continue;
+        }
+        if (mazeCopy[rr][cc] === 2) continue;
+
+        const oldVal = mazeCopy[rr][cc];
+        if (oldVal === 1) {
+          mazeCopy[rr][cc] = 0;
+        } else if (oldVal === 0) {
+          mazeCopy[rr][cc] = 1;
+        }
+        changedCells.push({ r: rr, c: cc, oldVal });
+        togglesCount--;
+      }
+
+      const ok = canReachExit(mazeCopy, playerPos.row, playerPos.col);
+      if (ok) {
+        setMaze(mazeCopy);
+      } else {
+        // revert
+        const revertMaze = mazeCopy.map((row) => [...row]);
+        for (const { r, c, oldVal } of changedCells) {
+          revertMaze[r][c] = oldVal;
+        }
+        setMaze(revertMaze);
+      }
+    }, mapChangeInterval);
+
+    return () => clearInterval(interval);
+  }, [maze, mapChangeInterval, playerPos]);
+
+  // Hücreye tıklayınca hareket
+  const handleCellClick = (r, c) => {
+    const rowDiff = Math.abs(r - playerPos.row);
+    const colDiff = Math.abs(c - playerPos.col);
+    if (rowDiff + colDiff === 1 && maze[r][c] !== 1) {
+      setPlayerPos({ row: r, col: c });
+      if (maze[r][c] === 2) {
+        onComplete && onComplete(); // çıkış
+      }
+    }
+  };
+
+  if (maze.length === 0) {
+    return <div className="text-white">Labirent Yükleniyor...</div>;
+  }
+
+  return (
+    <div className="flex flex-col items-center mt-4">
+      <p className="text-center mb-4">
+        25x25 labirent,{" "}
+        {enableRotation
+          ? `her ${rotationMin}-${rotationMax}s arası dönüyor, `
+          : "dönme devre dışı, "}
+        harita her {mapChangeInterval / 1000}s'de bir değişebilir.
+      </p>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateRows: `repeat(25, 24px)`,
+          gridTemplateColumns: `repeat(25, 24px)`,
+          transform: enableRotation ? `rotate(${rotation}deg)` : "",
+          transition: "transform 0.5s ease",
+        }}
+      >
+        {maze.map((rowArr, rowIndex) =>
+          rowArr.map((cellVal, colIndex) => {
+            const isPlayer =
+              playerPos.row === rowIndex && playerPos.col === colIndex;
+            let cellColor;
+            if (cellVal === 1) {
+              cellColor = "bg-gray-700"; // Duvar
+            } else if (cellVal === 2) {
+              cellColor = "bg-yellow-500"; // Çıkış
+            } else {
+              cellColor = "bg-gray-300"; // Yol
+            }
+            if (isPlayer) {
+              cellColor = "bg-red-500"; // Oyuncu
+            }
+
+            return (
+              <div
+                key={`${rowIndex}-${colIndex}`}
+                onClick={() => handleCellClick(rowIndex, colIndex)}
+                className={`${cellColor} w-6 h-6 border border-white cursor-pointer`}
+              />
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* 
+  =====================
+  ANA UYGULAMA
+  =====================
+*/
+export default function App() {
+  /** SORULAR */
+  const questions = [
+    {
+      question:
+        "İlk soruya hoş geldiniz.. Bu bilgisayar içindeki 'belgeler' klasöründe bir exe dosyası gizledik, dosyanın ismini türkçe karşılığı ile değiştirip submit answer tuşuna basın.",
+      correctAnswer: "",
+      requiresInput: false,
+      inputType: "file",
+    },
+    {
+      question:
+        "İkinci soruya geçtiniz... Biraz da frc üzerinden gidelim, 9 eksenli teker modülünün ismi?",
+      correctAnswer: "swerve",
+      requiresInput: true,
+      inputType: "text",
+    },
+    {
+      question:
+        "Üçüncü soru... Bu seferde belgeler içerisindeki bir png dosyasının içeriğine bir kelime gizledik onu bulabilir misin? Renk ayarlarıyla oynamayı düşünebilirsin :==)",
+      correctAnswer: "dayıoğlu",
+      requiresInput: true,
+      inputType: "text",
+    },
+    {
+      question: "",
+      correctAnswer: "",
+      requiresInput: false,
+      inputType: "maze",
+    },
+  ];
+
+  /** STATE’LER */
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [question, setQuestion] = useState(questions[0].question); // İlki
+  const [userAnswer, setUserAnswer] = useState("");
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // DevMode
+  const [devMode, setDevMode] = useState(false);
+
+  // Maze Dev Panel
+  const [enableRotation, setEnableRotation] = useState(true);
+  const [rotationMin, setRotationMin] = useState(3);
+  const [rotationMax, setRotationMax] = useState(6);
+  const [mapChangeInterval, setMapChangeInterval] = useState(20000);
+
+  /** useEffect: DevMode & questionIndex */
+  useEffect(() => {
+    const storedDev = localStorage.getItem("devMode");
+    if (storedDev === "true") {
+      setDevMode(true);
+      const savedIndex = localStorage.getItem("questionIndex");
+      if (savedIndex !== null) {
+        const idx = Number(savedIndex);
+        setCurrentQuestionIndex(idx);
+        setQuestion(questions[idx].question);
+      }
+    }
+  }, [questions]);
+
+  // DevMode / questionIndex -> localStorage
+  useEffect(() => {
+    if (devMode) {
+      localStorage.setItem("devMode", "true");
+      localStorage.setItem("questionIndex", String(currentQuestionIndex));
+    } else {
+      localStorage.setItem("devMode", "false");
+    }
+  }, [devMode, currentQuestionIndex]);
+
+  // 1. Soruda exe dosyası
+  useEffect(() => {
+    const createFile = async () => {
+      try {
+        const result = await invoke("create_exe_file");
+        console.log("File created at:", result);
+      } catch (error) {
+        console.error("Error creating file:", error);
+        setErrorMessage("Dosya oluşturulurken bir hata oluştu.");
+      }
+    };
+    createFile();
+  }, []);
+
+  /** Fonksiyonlar */
+  const toggleDevMode = () => {
+    setDevMode(!devMode);
+  };
+
+  const checkAnswer = async () => {
+    const currentQ = questions[currentQuestionIndex];
+    setErrorMessage(""); // önceki hata temizle
+
+    if (currentQ.requiresInput) {
+      if (userAnswer.toLowerCase() === currentQ.correctAnswer.toLowerCase()) {
+        setIsCorrect(true);
+        setSuccessMessage("Soruyu doğru bildin!");
+      } else {
+        setErrorMessage("Cevabınız yanlış, tekrar deneyin.");
+      }
+    } else {
+      // file
+      if (currentQ.inputType === "file") {
+        try {
+          const result = await invoke("check_file_name");
+          if (result) {
+            setIsCorrect(true);
+            setSuccessMessage("Soruyu doğru bildin!");
+          } else {
+            setIsCorrect(false);
+            alert("Yanlış! Dosya adı yanlış.");
+          }
+        } catch (error) {
+          setIsCorrect(false);
+          alert("Dosya adı kontrolünde bir hata oluştu.");
+        }
+      }
+    }
+  };
 
   async function copyImage() {
     try {
@@ -101,85 +380,197 @@ export default function App() {
     }
   }
 
-  const nextPuzzle = () => { 
-    if (currentQuestionIndex < questions.length - 1) { 
-      setCurrentQuestionIndex(currentQuestionIndex + 1); 
-      setIsCorrect(false); 
-      setUserAnswer(""); 
-      setQuestion(questions[currentQuestionIndex + 1].question);
-      console.log(currentQuestionIndex); 
-      if (currentQuestionIndex === 1) { 
-        console.log("Copying image...");
-        copyImage(); 
+  /** SONRAKİ SORU */
+  const nextPuzzle = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      const newIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(newIndex);
+      // Yeni sorunun metni
+      setQuestion(questions[newIndex].question);
+
+      // Reset
+      setIsCorrect(false);
+      setSuccessMessage("");
+      setErrorMessage("");
+      setUserAnswer("");
+
+      // 2->3 => PNG kopyala
+      if (newIndex === 2) {
+        copyImage();
       }
-    } else { 
-      setQuestion("Tebrikler! Tüm soruları doğru bildiniz."); 
-    } 
+    } else {
+      // Tüm sorular bitti
+      setQuestion("Tebrikler! Tüm soruları doğru bildiniz.");
+      setSuccessMessage("");
+      setIsCorrect(false);
+    }
   };
 
-  const currentQuestion = questions[currentQuestionIndex];
+  // Maze (soru 4) tamamlanınca
+  const handleMazeComplete = () => {
+    setIsCorrect(true);
+    setSuccessMessage("Soruyu doğru bildin!");
+  };
 
-  return ( 
-    <div 
-      className="min-h-screen text-white flex justify-center items-center relative" 
-      style={{ backgroundImage: 'url("/image.png")', backgroundSize: 'cover', backgroundPosition: 'center' }}
-    > 
+  // Hangisi labirent?
+  const isMaze = questions[currentQuestionIndex].inputType === "maze";
 
-      {/* Centered Mascot, Positioned Behind Content */}
-      <img 
-        src="/mascot.png" 
-        alt="Mascot" 
-        className="absolute top-1/2 ml-0 transform -translate-y-1/2 w-50 h-50 z-10" 
+  return (
+    <div
+      className="min-h-screen text-white relative"
+      style={{
+        backgroundImage: 'url("/image.png")',
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* DevMode Toggle */}
+      <button
+        onClick={toggleDevMode}
+        className="absolute top-4 right-4 bg-purple-600 hover:bg-purple-700 p-2 rounded-md z-50"
+      >
+        {devMode ? "DevMode: ON" : "DevMode: OFF"}
+      </button>
+
+      {/** DEV MODE LABIRENT PANEL (Butonun hemen altında) */}
+      {devMode && (
+        <div className="absolute top-16 right-4 bg-gray-700 p-3 rounded-md z-50 w-64">
+          <h2 className="font-semibold mb-2">Labirent Dev Panel</h2>
+
+          <div className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              checked={enableRotation}
+              onChange={(e) => setEnableRotation(e.target.checked)}
+              className="mr-2"
+            />
+            <span>Dönme Açık/Kapalı</span>
+          </div>
+
+          <div className="flex space-x-2 mb-2">
+            <div>
+              <label className="text-sm">Min Delay (sn):</label>
+              <input
+                type="number"
+                value={rotationMin}
+                onChange={(e) => setRotationMin(Number(e.target.value))}
+                className="w-14 ml-1 text-black p-1 rounded"
+              />
+            </div>
+            <div>
+              <label className="text-sm">Max Delay (sn):</label>
+              <input
+                type="number"
+                value={rotationMax}
+                onChange={(e) => setRotationMax(Number(e.target.value))}
+                className="w-14 ml-1 text-black p-1 rounded"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm">Yol Değiştirme (ms):</label>
+            <input
+              type="number"
+              value={mapChangeInterval}
+              onChange={(e) => setMapChangeInterval(Number(e.target.value))}
+              className="w-20 ml-1 text-black p-1 rounded"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Maskot */}
+      <img
+        src="/mascot.png"
+        alt="Mascot"
+        className="absolute top-1/2 left-0 transform -translate-y-1/2 w-50 h-50 z-10"
       />
 
-      {/* Question Box with Mascot Inside and Left-Aligned Content */}
-      <div className="bg-gray-800 bg-opacity-80 p-6 rounded-lg shadow-lg w-4/5 max-w-4xl flex items-start space-x-8 z-20"> 
+      {isMaze ? (
+        // ========== 4. Soru: Maze ==========
+        <div className="min-h-screen flex flex-col items-center justify-center">
+          {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
 
-        {/* Question Content */}
-        <div className="flex flex-col items-start w-full"> 
-          <h1 className="text-2xl font-bold mb-4">Escape Game</h1> 
+          <p className="text-lg mb-4">{question}</p>
 
-          {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>} 
-
-          <p className="text-lg mb-4">{question}</p> 
-
-          {currentQuestion && currentQuestion.requiresInput && ( 
-            currentQuestion.inputType === "file" ? ( 
-              <input 
-                type="text" 
-                value={userAnswer} 
-                onChange={(e) => setUserAnswer(e.target.value)} 
-                placeholder="Dosya ismini girin" 
-                className="p-2 mb-4 rounded bg-gray-700 text-white w-full" 
-              /> 
-            ) : ( 
-              <input 
-                type={currentQuestion.inputType} 
-                value={userAnswer} 
-                onChange={(e) => setUserAnswer(e.target.value)} 
-                placeholder="Cevabınızı girin" 
-                className="p-2 mb-4 rounded bg-gray-700 text-white w-full" 
-              /> 
-            ) 
+          {!isCorrect ? (
+            <MazeGame
+              onComplete={handleMazeComplete}
+              enableRotation={enableRotation}
+              rotationMin={rotationMin}
+              rotationMax={rotationMax}
+              mapChangeInterval={mapChangeInterval}
+            />
+          ) : (
+            <div className="flex flex-col items-center space-y-4">
+              <p className="text-green-300">{successMessage}</p>
+              <button
+                onClick={nextPuzzle}
+                className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white w-full max-w-xs"
+              >
+                Next Puzzle
+              </button>
+            </div>
           )}
-
-          {!isCorrect ? ( 
-            <button 
-              onClick={checkAnswer} 
-              className="bg-blue-500 hover:bg-blue-600 p-2 rounded-md text-white w-full" 
-            > 
-              Submit Answer 
-            </button> 
-          ) : ( 
-            <button 
-              onClick={nextPuzzle} 
-              className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white w-full" 
-            > 
-              Next Puzzle 
-            </button> 
-          )} 
         </div>
-      </div>
-    </div> 
-  ); 
+      ) : (
+        // ========== Diğer Sorular (0,1,2) ==========
+        <div className="min-h-screen flex justify-center items-center">
+          <div className="bg-gray-800 bg-opacity-80 p-6 rounded-lg shadow-lg w-4/5 max-w-4xl flex items-start z-20">
+            <div className="flex flex-col items-start w-full">
+              <h1 className="text-2xl font-bold mb-4">Escape Game</h1>
+
+              {errorMessage && (
+                <p className="text-red-500 mb-4">{errorMessage}</p>
+              )}
+
+              <p className="text-lg mb-4">{question}</p>
+
+              {!isCorrect ? (
+                <>
+                  {questions[currentQuestionIndex].requiresInput && (
+                    <input
+                      type={
+                        questions[currentQuestionIndex].inputType === "file"
+                          ? "text"
+                          : questions[currentQuestionIndex].inputType
+                      }
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      placeholder={
+                        questions[currentQuestionIndex].inputType === "file"
+                          ? "Dosya ismini girin"
+                          : "Cevabınızı girin"
+                      }
+                      className="p-2 mb-4 rounded bg-gray-700 text-white w-full"
+                    />
+                  )}
+
+                  <button
+                    onClick={checkAnswer}
+                    className="bg-blue-500 hover:bg-blue-600 p-2 rounded-md text-white w-full"
+                  >
+                    Submit Answer
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center space-y-4 w-full">
+                  {/* Doğru Bildik -> successMessage ve Next Puzzle */}
+                  <p className="text-green-300">{successMessage}</p>
+
+                  <button
+                    onClick={nextPuzzle}
+                    className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white w-full"
+                  >
+                    Next Puzzle
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
