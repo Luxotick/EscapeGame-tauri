@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { MorseCodeGame } from './morse-code-game';
 
 /* 
   ====================
@@ -274,6 +275,12 @@ export default function App() {
       requiresInput: false,
       inputType: "maze",
     },
+    {
+      question: "Decode the Morse code message displayed by the LED.",
+      correctAnswer: "kickoff",
+      requiresInput: false,
+      inputType: "morse",
+    },
   ];
 
   /** STATE’LER */
@@ -405,8 +412,8 @@ export default function App() {
         copyImage();
       }
     } else {
-      // Tüm sorular bitti
-      setQuestion("Tebrikler! Tüm soruları doğru bildiniz.");
+      // All questions are finished
+      setQuestion("Congratulations! You've completed all the puzzles.");
       setSuccessMessage("");
       setIsCorrect(false);
     }
@@ -418,12 +425,16 @@ export default function App() {
     setSuccessMessage("Soruyu doğru bildin!");
   };
 
+  const skipQuestion = () => {
+    nextPuzzle();
+  };
+
   // Hangisi labirent?
   const isMaze = questions[currentQuestionIndex].inputType === "maze";
 
   return (
     <div
-      className="min-h-screen text-white relative"
+      className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center"
       style={{
         backgroundImage: 'url("/image.png")',
         backgroundSize: "cover",
@@ -442,7 +453,13 @@ export default function App() {
       {devMode && (
         <div className="fixed top-16 right-4 bg-gray-700 p-3 rounded-md z-50 w-64">
           <h2 className="font-semibold mb-2">Dev Panel</h2>
-          {isMaze ? (
+          <button
+            onClick={skipQuestion}
+            className="bg-yellow-500 hover:bg-yellow-600 p-2 rounded-md text-white w-full mb-2"
+          >
+            Skip Question
+          </button>
+          {isMaze && (
             <>
               <div className="flex items-center mb-2">
                 <input
@@ -485,8 +502,6 @@ export default function App() {
                 />
               </div>
             </>
-          ) : (
-            <p>Maze controls will appear here when the maze game is active.</p>
           )}
         </div>
       )}
@@ -513,6 +528,23 @@ export default function App() {
               rotationMax={rotationMax}
               mapChangeInterval={mapChangeInterval}
             />
+          ) : (
+            <div className="flex flex-col items-center space-y-4">
+              <p className="text-green-300">{successMessage}</p>
+              <button
+                onClick={nextPuzzle}
+                className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white w-full max-w-xs"
+              >
+                Next Puzzle
+              </button>
+            </div>
+          )}
+        </div>
+      ) : questions[currentQuestionIndex].inputType === "morse" ? (
+        <div className="min-h-screen flex flex-col items-center justify-center">
+          <p className="text-lg mb-4">{question}</p>
+          {!isCorrect ? (
+            <MorseCodeGame onComplete={handleMazeComplete} />
           ) : (
             <div className="flex flex-col items-center space-y-4">
               <p className="text-green-300">{successMessage}</p>
