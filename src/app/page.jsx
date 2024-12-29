@@ -296,24 +296,22 @@ export default function App() {
   /** useEffect: DevMode & questionIndex */
   useEffect(() => {
     const storedDev = localStorage.getItem("devMode");
-    if (storedDev === "true") {
+    const savedIndex = localStorage.getItem("questionIndex");
+    
+    if (storedDev === "true" && !devMode) {
       setDevMode(true);
-      const savedIndex = localStorage.getItem("questionIndex");
       if (savedIndex !== null) {
         const idx = Number(savedIndex);
         setCurrentQuestionIndex(idx);
         setQuestion(questions[idx].question);
       }
     }
-  }, [questions]);
+  }, []); // Empty dependency array - only runs once on mount
 
   // DevMode / questionIndex -> localStorage
   useEffect(() => {
     if (devMode) {
-      localStorage.setItem("devMode", "true");
       localStorage.setItem("questionIndex", String(currentQuestionIndex));
-    } else {
-      localStorage.setItem("devMode", "false");
     }
   }, [devMode, currentQuestionIndex]);
 
@@ -333,7 +331,15 @@ export default function App() {
 
   /** Fonksiyonlar */
   const toggleDevMode = () => {
-    setDevMode(!devMode);
+    setDevMode((prev) => {
+      const newValue = !prev;
+      localStorage.setItem("devMode", newValue.toString());
+      if (!newValue) {
+        // When turning dev mode off, reset to current question
+        localStorage.removeItem("questionIndex");
+      }
+      return newValue;
+    });
   };
 
   const checkAnswer = async () => {
@@ -427,56 +433,61 @@ export default function App() {
       {/* DevMode Toggle */}
       <button
         onClick={toggleDevMode}
-        className="absolute top-4 right-4 bg-purple-600 hover:bg-purple-700 p-2 rounded-md z-50"
+        className="fixed top-4 right-4 bg-purple-600 hover:bg-purple-700 p-2 rounded-md z-50"
       >
         {devMode ? "DevMode: ON" : "DevMode: OFF"}
       </button>
 
-      {/** DEV MODE LABIRENT PANEL (Butonun hemen altında) */}
+      {/** DEV MODE PANEL */}
       {devMode && (
-        <div className="absolute top-16 right-4 bg-gray-700 p-3 rounded-md z-50 w-64">
-          <h2 className="font-semibold mb-2">Labirent Dev Panel</h2>
+        <div className="fixed top-16 right-4 bg-gray-700 p-3 rounded-md z-50 w-64">
+          <h2 className="font-semibold mb-2">Dev Panel</h2>
+          {isMaze ? (
+            <>
+              <div className="flex items-center mb-2">
+                <input
+                  type="checkbox"
+                  checked={enableRotation}
+                  onChange={(e) => setEnableRotation(e.target.checked)}
+                  className="mr-2"
+                />
+                <span>Dönme Açık/Kapalı</span>
+              </div>
 
-          <div className="flex items-center mb-2">
-            <input
-              type="checkbox"
-              checked={enableRotation}
-              onChange={(e) => setEnableRotation(e.target.checked)}
-              className="mr-2"
-            />
-            <span>Dönme Açık/Kapalı</span>
-          </div>
+              <div className="flex space-x-2 mb-2">
+                <div>
+                  <label className="text-sm">Min Delay (sn):</label>
+                  <input
+                    type="number"
+                    value={rotationMin}
+                    onChange={(e) => setRotationMin(Number(e.target.value))}
+                    className="w-14 ml-1 text-black p-1 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm">Max Delay (sn):</label>
+                  <input
+                    type="number"
+                    value={rotationMax}
+                    onChange={(e) => setRotationMax(Number(e.target.value))}
+                    className="w-14 ml-1 text-black p-1 rounded"
+                  />
+                </div>
+              </div>
 
-          <div className="flex space-x-2 mb-2">
-            <div>
-              <label className="text-sm">Min Delay (sn):</label>
-              <input
-                type="number"
-                value={rotationMin}
-                onChange={(e) => setRotationMin(Number(e.target.value))}
-                className="w-14 ml-1 text-black p-1 rounded"
-              />
-            </div>
-            <div>
-              <label className="text-sm">Max Delay (sn):</label>
-              <input
-                type="number"
-                value={rotationMax}
-                onChange={(e) => setRotationMax(Number(e.target.value))}
-                className="w-14 ml-1 text-black p-1 rounded"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm">Yol Değiştirme (ms):</label>
-            <input
-              type="number"
-              value={mapChangeInterval}
-              onChange={(e) => setMapChangeInterval(Number(e.target.value))}
-              className="w-20 ml-1 text-black p-1 rounded"
-            />
-          </div>
+              <div>
+                <label className="text-sm">Yol Değiştirme (ms):</label>
+                <input
+                  type="number"
+                  value={mapChangeInterval}
+                  onChange={(e) => setMapChangeInterval(Number(e.target.value))}
+                  className="w-20 ml-1 text-black p-1 rounded"
+                />
+              </div>
+            </>
+          ) : (
+            <p>Maze controls will appear here when the maze game is active.</p>
+          )}
         </div>
       )}
 
@@ -530,21 +541,30 @@ export default function App() {
               {!isCorrect ? (
                 <>
                   {questions[currentQuestionIndex].requiresInput && (
-                    <input
-                      type={
-                        questions[currentQuestionIndex].inputType === "file"
-                          ? "text"
-                          : questions[currentQuestionIndex].inputType
-                      }
-                      value={userAnswer}
-                      onChange={(e) => setUserAnswer(e.target.value)}
-                      placeholder={
-                        questions[currentQuestionIndex].inputType === "file"
-                          ? "Dosya ismini girin"
-                          : "Cevabınızı girin"
-                      }
-                      className="p-2 mb-4 rounded bg-gray-700 text-white w-full"
-                    />
+                    <>
+                      <label htmlFor="answer-input" className="sr-only">
+                        {questions[currentQuestionIndex].inputType === "file"
+                          ? "Dosya ismi"
+                          : "Cevap"}
+                      </label>
+                      <input
+                        id="answer-input"
+                        name="answer-input"
+                        type={
+                          questions[currentQuestionIndex].inputType === "file"
+                            ? "text"
+                            : questions[currentQuestionIndex].inputType
+                        }
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        placeholder={
+                          questions[currentQuestionIndex].inputType === "file"
+                            ? "Dosya ismini girin"
+                            : "Cevabınızı girin"
+                        }
+                        className="p-2 mb-4 rounded bg-gray-700 text-white w-full"
+                      />
+                    </>
                   )}
 
                   <button
@@ -574,3 +594,4 @@ export default function App() {
     </div>
   );
 }
+
