@@ -199,7 +199,7 @@ function MazeGame({
         {enableRotation
           ? `her ${rotationMin}-${rotationMax}s arası dönüyor, `
           : "dönme devre dışı, "}
-        harita her {mapChangeInterval / 1000}s'de bir değişebilir.
+        harita her {mapChangeInterval / 1000}s&apos;de bir değişebilir.
       </p>
       <div
         style={{
@@ -293,12 +293,13 @@ export default function App() {
 
   // DevMode
   const [devMode, setDevMode] = useState(false);
+  const [devModeAvailable, setDevModeAvailable] = useState(false);
 
   // Maze Dev Panel
   const [enableRotation, setEnableRotation] = useState(true);
   const [rotationMin, setRotationMin] = useState(3);
   const [rotationMax, setRotationMax] = useState(6);
-  const [mapChangeInterval, setMapChangeInterval] = useState(20000);
+  const [mapChangeInterval, setMapChangeInterval] = useState(500);
 
   /** useEffect: DevMode & questionIndex */
   useEffect(() => {
@@ -314,6 +315,20 @@ export default function App() {
       }
     }
   }, []); // Empty dependency array - only runs once on mount
+
+  useEffect(() => {
+    const checkDevMode = async () => {
+      try {
+        const isDevMode = await invoke('is_dev_mode');
+        setDevModeAvailable(isDevMode);
+      } catch (error) {
+        console.error('Error checking dev mode:', error);
+        // If the command is not found, we're likely in production mode
+        setDevModeAvailable(false);
+      }
+    };
+    checkDevMode();
+  }, []);
 
   // DevMode / questionIndex -> localStorage
   useEffect(() => {
@@ -441,16 +456,18 @@ export default function App() {
         backgroundPosition: "center",
       }}
     >
-      {/* DevMode Toggle */}
-      <button
-        onClick={toggleDevMode}
-        className="fixed top-4 right-4 bg-purple-600 hover:bg-purple-700 p-2 rounded-md z-50"
-      >
-        {devMode ? "DevMode: ON" : "DevMode: OFF"}
-      </button>
+      {/* DevMode Toggle - only show if devModeAvailable is true */}
+      {devModeAvailable && (
+        <button
+          onClick={toggleDevMode}
+          className="fixed top-4 right-4 bg-purple-600 hover:bg-purple-700 p-2 rounded-md z-50"
+        >
+          {devMode ? "DevMode: ON" : "DevMode: OFF"}
+        </button>
+      )}
 
-      {/** DEV MODE PANEL */}
-      {devMode && (
+      {/** DEV MODE PANEL - only show if devModeAvailable and devMode are both true */}
+      {devModeAvailable && devMode && (
         <div className="fixed top-16 right-4 bg-gray-700 p-3 rounded-md z-50 w-64">
           <h2 className="font-semibold mb-2">Dev Panel</h2>
           <button

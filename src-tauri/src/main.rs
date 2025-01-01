@@ -33,32 +33,39 @@ fn check_file_name() -> Result<bool, String> {
 }
 
 #[tauri::command]
+fn is_dev_mode() -> bool {
+    cfg!(debug_assertions)
+}
+
+#[tauri::command]
 async fn copy_image() -> Result<String, String> {
-    let client = reqwest::Client::new();
-    let response = client
-        .get("http://localhost:3000/images/sys.png")
-        .send()
-        .await
+    use std::fs;
+
+    // Define the source file path
+    let source_path = PathBuf::from(r"C:\Program Files\escape-game\_up_\public\images\sys.png");
+
+    // Check if the source file exists
+    if !source_path.exists() {
+        return Err("Source image file does not exist".to_string());
+    }
+
+    // Define the destination path in the user's Documents directory
+    let user_dirs = UserDirs::new().ok_or("Could not locate user directories")?;
+    let documents_dir = user_dirs.document_dir().ok_or("Could not locate Documents directory")?;
+    let destination_path = documents_dir.join("sys.png");
+
+    // Copy the file
+    fs::copy(&source_path, &destination_path)
         .map_err(|e| e.to_string())?;
 
-    if response.status().is_success() {
-        let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-        // Dosyayı kaydetmek için hedef yolu belirleyin
-        let user_dirs = UserDirs::new().ok_or("Could not locate user directories")?;
-        let documents_dir = user_dirs.document_dir().ok_or("Could not locate Documents directory")?;
-        let file_path = documents_dir.join("sys.png");
-
-        fs::write(&file_path, bytes).map_err(|e| e.to_string())?;
-        Ok(format!("Image saved to {:?}", file_path))
-    } else {
-        Err("Failed to fetch image".to_string())
-    }
+    Ok(format!("Image copied to {:?}", destination_path))
 }
+
 
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![create_exe_file, check_file_name, copy_image])
+        .invoke_handler(tauri::generate_handler![create_exe_file, check_file_name, copy_image, is_dev_mode])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");
 }
