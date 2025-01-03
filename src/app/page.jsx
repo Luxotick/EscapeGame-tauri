@@ -277,11 +277,33 @@ export default function App() {
       inputType: "maze",
     },
     {
+      question:
+        "Geçen seneki Haliç Regional kazananlarından birinin takım numarası?",
+        correctAnswer: ["8214", "9609", "9523"], // 3 farklı doğru cevap
+        requiresInput: true,
+      inputType: "text",
+    },
+    {
+      question:
+        "EalRobotik kulübünün frc numarası?",
+        correctAnswer: "8828", // 3 farklı doğru cevap
+        requiresInput: true,
+      inputType: "text",
+    },
+    {
+      question:
+        "'dayıoğlu' kelimesinin Caesar şifrelemesi ile anahtar 7 alınarak şifrelenmiş halini yazın (türkçe alfabe)",
+        correctAnswer: "igeoumsc",
+        requiresInput: true,
+      inputType: "text",
+    },
+    {
       question: "Decode the Morse code message displayed by the LED.",
       correctAnswer: "kickoff",
       requiresInput: false,
       inputType: "morse",
     },
+
   ];
 
   /** STATE’LER */
@@ -368,9 +390,14 @@ export default function App() {
   const checkAnswer = async () => {
     const currentQ = questions[currentQuestionIndex];
     setErrorMessage(""); // önceki hata temizle
-
+  
     if (currentQ.requiresInput) {
-      if (userAnswer.toLowerCase() === currentQ.correctAnswer.toLowerCase()) {
+      const userAnswerLower = userAnswer.toLowerCase();
+      const correctAnswers = Array.isArray(currentQ.correctAnswer)
+        ? currentQ.correctAnswer.map((answer) => answer.toLowerCase())
+        : [currentQ.correctAnswer.toLowerCase()];
+  
+      if (correctAnswers.includes(userAnswerLower)) {
         setIsCorrect(true);
         setSuccessMessage("Soruyu doğru bildin!");
       } else {
@@ -453,7 +480,6 @@ return (
   <div
     className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center"
     style={{
-      backgroundImage: 'url("/image.png")',
       backgroundSize: "cover",
       backgroundPosition: "center",
     }}
@@ -525,13 +551,6 @@ return (
         )}
       </div>
     )}
-
-    {/* Maskot */}
-    <img
-      src="/mascot.png"
-      alt="Mascot"
-      className="absolute top-1/2 left-0 transform -translate-y-1/2 w-50 h-50 z-10"
-    />
 
     {isMaze ? (
       // ========== 4. Soru: Maze ==========
