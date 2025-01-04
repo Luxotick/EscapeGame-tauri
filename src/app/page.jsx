@@ -254,7 +254,6 @@ export default function App() {
       correctAnswer: "",
       requiresInput: false,
       inputType: "file",
-      
     },
     {
       question:
@@ -277,24 +276,31 @@ export default function App() {
       inputType: "maze",
     },
     {
+      question: "",
+      correctAnswer: "eskişehir anadolu lisesi", // QR kodunda gizlenen metin
+      requiresInput: true,
+      inputType: "text",
+      qrCodeImage: "\\images\\qr_code.png", // QR kodunun dosya yolu
+    },
+    {
       question:
         "Geçen seneki Haliç Regional kazananlarından birinin takım numarası?",
-        correctAnswer: ["8214", "9609", "9523"], // 3 farklı doğru cevap
-        requiresInput: true,
+      correctAnswer: ["8214", "9609", "9523"], // 3 farklı doğru cevap
+      requiresInput: true,
       inputType: "text",
     },
     {
       question:
         "EalRobotik kulübünün frc numarası?",
-        correctAnswer: "8828", // 3 farklı doğru cevap
-        requiresInput: true,
+      correctAnswer: "8828", // 3 farklı doğru cevap
+      requiresInput: true,
       inputType: "text",
     },
     {
       question:
         "'dayıoğlu' kelimesinin Caesar şifrelemesi ile anahtar 7 alınarak şifrelenmiş halini yazın (türkçe alfabe)",
-        correctAnswer: "igeoumsc",
-        requiresInput: true,
+      correctAnswer: "igeoumsc",
+      requiresInput: true,
       inputType: "text",
     },
     {
@@ -303,7 +309,6 @@ export default function App() {
       requiresInput: false,
       inputType: "morse",
     },
-
   ];
 
   /** STATE’LER */
@@ -328,7 +333,7 @@ export default function App() {
   useEffect(() => {
     const storedDev = localStorage.getItem("devMode");
     const savedIndex = localStorage.getItem("questionIndex");
-    
+
     if (storedDev === "true" && !devMode) {
       setDevMode(true);
       if (savedIndex !== null) {
@@ -390,13 +395,13 @@ export default function App() {
   const checkAnswer = async () => {
     const currentQ = questions[currentQuestionIndex];
     setErrorMessage(""); // önceki hata temizle
-  
+
     if (currentQ.requiresInput) {
       const userAnswerLower = userAnswer.toLowerCase();
       const correctAnswers = Array.isArray(currentQ.correctAnswer)
         ? currentQ.correctAnswer.map((answer) => answer.toLowerCase())
         : [currentQ.correctAnswer.toLowerCase()];
-  
+
       if (correctAnswers.includes(userAnswerLower)) {
         setIsCorrect(true);
         setSuccessMessage("Soruyu doğru bildin!");
@@ -472,198 +477,227 @@ export default function App() {
     nextPuzzle();
   };
 
+  // QR kodlu soru için doğrulama
+  const handleQRCodeComplete = () => {
+    const currentQ = questions[currentQuestionIndex];
+    if (userAnswer.toLowerCase() === currentQ.correctAnswer.toLowerCase()) {
+      setIsCorrect(true);
+      setSuccessMessage("Soruyu doğru bildin!");
+      // Doğru cevap verildiğinde bir sonraki soruya geç
+      nextPuzzle();
+    } else {
+      setErrorMessage("Cevabınız yanlış, tekrar deneyin.");
+    }
+  };
+
   // Hangisi labirent?
   const isMaze = questions[currentQuestionIndex].inputType === "maze";
 
+  // QR kodlu soru mu?
+  const isQRCode = questions[currentQuestionIndex].inputType === "text" && questions[currentQuestionIndex].qrCodeImage;
+
   // App bileşeninin son kısmını güncelleyin
-return (
-  <div
-    className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center"
-    style={{
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-    }}
-  >
-    {/* DevMode Toggle - only show if devModeAvailable is true */}
-    {devModeAvailable && (
-      <button
-        onClick={toggleDevMode}
-        className="fixed top-4 right-4 bg-purple-600 hover:bg-purple-700 p-2 rounded-md z-50"
-      >
-        {devMode ? "DevMode: ON" : "DevMode: OFF"}
-      </button>
-    )}
-
-    {/* DEV MODE PANEL - only show if devModeAvailable and devMode are both true */}
-    {devModeAvailable && devMode && (
-      <div className="fixed top-16 right-4 bg-gray-700 p-3 rounded-md z-50 w-64">
-        <h2 className="font-semibold mb-2">Dev Panel</h2>
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
+      {/* DevMode Toggle - only show if devModeAvailable is true */}
+      {devModeAvailable && (
         <button
-          onClick={skipQuestion}
-          className="bg-yellow-500 hover:bg-yellow-600 p-2 rounded-md text-white w-full mb-2"
+          onClick={toggleDevMode}
+          className="fixed top-4 right-4 bg-purple-600 hover:bg-purple-700 p-2 rounded-md z-50"
         >
-          Skip Question
+          {devMode ? "DevMode: ON" : "DevMode: OFF"}
         </button>
-        {isMaze && (
-          <>
-            <div className="flex items-center mb-2">
-              <input
-                type="checkbox"
-                checked={enableRotation}
-                onChange={(e) => setEnableRotation(e.target.checked)}
-                className="mr-2"
-                
-              />
-              <span>Dönme Açık/Kapalı</span>
-            </div>
+      )}
 
-            <div className="flex space-x-2 mb-2">
+      {/* DEV MODE PANEL - only show if devModeAvailable and devMode are both true */}
+      {devModeAvailable && devMode && (
+        <div className="fixed top-16 right-4 bg-gray-700 p-3 rounded-md z-50 w-64">
+          <h2 className="font-semibold mb-2">Dev Panel</h2>
+          <button
+            onClick={skipQuestion}
+            className="bg-yellow-500 hover:bg-yellow-600 p-2 rounded-md text-white w-full mb-2"
+          >
+            Skip Question
+          </button>
+          {isMaze && (
+            <>
+              <div className="flex items-center mb-2">
+                <input
+                  type="checkbox"
+                  checked={enableRotation}
+                  onChange={(e) => setEnableRotation(e.target.checked)}
+                  className="mr-2"
+                />
+                <span>Dönme Açık/Kapalı</span>
+              </div>
+
+              <div className="flex space-x-2 mb-2">
+                <div>
+                  <label className="text-sm">Min Delay (sn):</label>
+                  <input
+                    type="number"
+                    value={rotationMin}
+                    onChange={(e) => setRotationMin(Number(e.target.value))}
+                    className="w-14 ml-1 text-black p-1 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm">Max Delay (sn):</label>
+                  <input
+                    type="number"
+                    value={rotationMax}
+                    onChange={(e) => setRotationMax(Number(e.target.value))}
+                    className="w-14 ml-1 text-black p-1 rounded"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="text-sm">Min Delay (sn):</label>
+                <label className="text-sm">Yol Değiştirme (ms):</label>
                 <input
                   type="number"
-                  value={rotationMin}
-                  onChange={(e) => setRotationMin(Number(e.target.value))}
-                  className="w-14 ml-1 text-black p-1 rounded"
+                  value={mapChangeInterval}
+                  onChange={(e) => setMapChangeInterval(Number(e.target.value))}
+                  className="w-20 ml-1 text-black p-1 rounded"
                 />
               </div>
-              <div>
-                <label className="text-sm">Max Delay (sn):</label>
-                <input
-                  type="number"
-                  value={rotationMax}
-                  onChange={(e) => setRotationMax(Number(e.target.value))}
-                  className="w-14 ml-1 text-black p-1 rounded"
-                />
-              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {isMaze ? (
+        // ========== 4. Soru: Maze ==========
+        <div className="min-h-screen flex flex-col items-center justify-center">
+          {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
+
+          <p className="text-lg mb-4">{question}</p>
+
+          {!isCorrect ? (
+            <MazeGame
+              onComplete={handleMazeComplete}
+              enableRotation={enableRotation}
+              rotationMin={rotationMin}
+              rotationMax={rotationMax}
+              mapChangeInterval={mapChangeInterval}
+            />
+          ) : (
+            <div className="flex flex-col items-center space-y-4">
+              <p className="text-green-300">{successMessage}</p>
+              <button
+                onClick={nextPuzzle}
+                className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white w-full max-w-xs"
+              >
+                Next Puzzle
+              </button>
             </div>
-
-            <div>
-              <label className="text-sm">Yol Değiştirme (ms):</label>
-              <input
-                type="number"
-                value={mapChangeInterval}
-                onChange={(e) => setMapChangeInterval(Number(e.target.value))}
-                className="w-20 ml-1 text-black p-1 rounded"
-              />
-            </div>
-          </>
-        )}
-      </div>
-    )}
-
-    {isMaze ? (
-      // ========== 4. Soru: Maze ==========
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
-
-        <p className="text-lg mb-4">{question}</p>
-
-        {!isCorrect ? (
-          <MazeGame
-            onComplete={handleMazeComplete}
-            enableRotation={enableRotation}
-            rotationMin={rotationMin}
-            rotationMax={rotationMax}
-            mapChangeInterval={mapChangeInterval}
+          )}
+        </div>
+      ) : isQRCode ? (
+        // ========== QR Kodlu Soru ==========
+        <div className="min-h-screen flex flex-col items-center justify-center max-h-80 max-w-80">
+          <p className="text-lg mb-4">{question}</p>
+          <img src={questions[currentQuestionIndex].qrCodeImage} alt="QR Code" className="mb-4" />
+          <input
+            type="text"
+            placeholder="Qr Code'u aratmayı deneyebilirsiniz :)"
+            value={userAnswer}
+            onChange={(e) => setUserAnswer(e.target.value)}
+            className="p-2 mb-4 rounded bg-gray-700 text-white w-full max-w-xs"
           />
-        ) : (
-          <div className="flex flex-col items-center space-y-4">
-            <p className="text-green-300">{successMessage}</p>
-            <button
-              onClick={nextPuzzle}
-              className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white w-full max-w-xs"
-            >
-              Next Puzzle
-            </button>
-          </div>
-        )}
-      </div>
-    ) : questions[currentQuestionIndex].inputType === "morse" ? (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        {!isCorrect ? (
-          <MorseCodeGame onComplete={handleMazeComplete} />
-        ) : (
-          <div className="flex flex-col items-center space-y-4">
-            <p className="text-green-300">{successMessage}</p>
-          </div>
-        )}
-      </div>
-    ) : (
-      // ========== Diğer Sorular (0,1,2) ==========
-      <div className="min-h-screen flex justify-center items-center">
-        <div className="bg-gray-800 bg-opacity-80 p-6 rounded-lg shadow-lg w-4/5 max-w-4xl flex items-start z-20">
-          <div className="flex flex-col items-start w-full">
-            <h1 className="text-2xl font-bold mb-4">Escape Game</h1>
+          <button
+            onClick={handleQRCodeComplete}
+            className="bg-blue-500 hover:bg-blue-600 p-2 rounded-md text-white w-full max-w-xs"
+          >
+            Submit Answer
+          </button>
+          {errorMessage && <p className="text-red-500 mt-2">{errorMessage}</p>}
+          {successMessage && <p className="text-green-300 mt-2">{successMessage}</p>}
+        </div>
+      ) : questions[currentQuestionIndex].inputType === "morse" ? (
+        <div className="min-h-screen flex flex-col items-center justify-center">
+          {!isCorrect ? (
+            <MorseCodeGame onComplete={handleMazeComplete} />
+          ) : (
+            <div className="flex flex-col items-center space-y-4">
+              <p className="text-green-300">{successMessage}</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        // ========== Diğer Sorular (0,1,2) ==========
+        <div className="min-h-screen flex justify-center items-center">
+          <div className="bg-gray-800 bg-opacity-80 p-6 rounded-lg shadow-lg w-4/5 max-w-4xl flex items-start z-20">
+            <div className="flex flex-col items-start w-full">
+              <h1 className="text-2xl font-bold mb-4">Escape Game</h1>
 
-            {errorMessage && (
-              <p className="text-red-500 mb-4">{errorMessage}</p>
-            )}
+              {errorMessage && (
+                <p className="text-red-500 mb-4">{errorMessage}</p>
+              )}
 
-            <p className="text-lg mb-4">{question}</p>
+              <p className="text-lg mb-4">{question}</p>
 
-            {!isCorrect ? (
-              <>
-                {questions[currentQuestionIndex].requiresInput && (
-                  <>
-                    <label htmlFor="answer-input" className="sr-only">
-                      {questions[currentQuestionIndex].inputType === "file"
-                        ? "Dosya ismi"
-                        : "Cevap"}
-                    </label>
-                    <input
-                      autoComplete="off" // Otomatik tamamlamayı devre dışı bırak
-                      id="answer-input"
-                      name="answer-input"
-                      type={
-                        questions[currentQuestionIndex].inputType === "file"
-                          ? "text"
-                          : questions[currentQuestionIndex].inputType
-                      }
-                      value={userAnswer}
-                      onChange={(e) => setUserAnswer(e.target.value)}
-                      placeholder={
-                        questions[currentQuestionIndex].inputType === "file"
-                          ? "Dosya ismini girin"
-                          : "Cevabınızı girin"
-                      }
-                      className="p-2 mb-4 rounded bg-gray-700 text-white w-full"
-                    />
-                  </>
-                )}
+              {!isCorrect ? (
+                <>
+                  {questions[currentQuestionIndex].requiresInput && (
+                    <>
+                      <label htmlFor="answer-input" className="sr-only">
+                        {questions[currentQuestionIndex].inputType === "file"
+                          ? "Dosya ismi"
+                          : "Cevap"}
+                      </label>
+                      <input
+                        autoComplete="off" // Otomatik tamamlamayı devre dışı bırak
+                        id="answer-input"
+                        name="answer-input"
+                        type={
+                          questions[currentQuestionIndex].inputType === "file"
+                            ? "text"
+                            : questions[currentQuestionIndex].inputType
+                        }
+                        value={userAnswer}
+                        onChange={(e) => setUserAnswer(e.target.value)}
+                        placeholder={
+                          questions[currentQuestionIndex].inputType === "file"
+                            ? "Dosya ismini girin"
+                            : "Cevabınızı girin"
+                        }
+                        className="p-2 mb-4 rounded bg-gray-700 text-white w-full"
+                      />
+                    </>
+                  )}
 
-                <button
-                  onClick={checkAnswer}
-                  className="bg-blue-500 hover:bg-blue-600 p-2 rounded-md text-white w-full"
-                >
-                  Submit Answer
-                </button>
-              </>
-            ) : (
-              <div className="flex flex-col items-center space-y-4 w-full">
-                {/* Doğru Bildik -> successMessage ve Next Puzzle */}
-                <p className="text-green-300">{successMessage}</p>
+                  <button
+                    onClick={checkAnswer}
+                    className="bg-blue-500 hover:bg-blue-600 p-2 rounded-md text-white w-full"
+                  >
+                    Submit Answer
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center space-y-4 w-full">
+                  {/* Doğru Bildik -> successMessage ve Next Puzzle */}
+                  <p className="text-green-300">{successMessage}</p>
 
-                <button
-                  onClick={nextPuzzle}
-                  className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white w-full"
-                >
-                  Next Puzzle
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={nextPuzzle}
+                    className="bg-green-500 hover:bg-green-600 p-2 rounded-md text-white w-full"
+                  >
+                    Next Puzzle
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {/* Tüm soruları doğru yanıtladığında gösterilecek mesaj */}
-    {currentQuestionIndex === questions.length - 1 && isCorrect && (
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 p-6 rounded-lg shadow-lg z-50">
-        <p className="text-white text-2xl font-bold">Tüm soruları doğru yanıtladın! Kameramandan kapıyı açmasını iste :)</p>
-      </div>
-    )}
-  </div>
-);
+      {/* Tüm soruları doğru yanıtladığında gösterilecek mesaj */}
+      {currentQuestionIndex === questions.length - 1 && isCorrect && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 p-6 rounded-lg shadow-lg z-50">
+          <p className="text-white text-2xl font-bold">Tüm soruları doğru yanıtladın! Kameramandan kapıyı açmasını iste :)</p>
+        </div>
+      )}
+    </div>
+  );
 }
-
