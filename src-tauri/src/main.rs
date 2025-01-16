@@ -1,8 +1,6 @@
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::Write;
-use tauri::{Manager};
-use std::error::Error;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use directories::UserDirs; // directories crate'ini kullanıyoruz
 
 // Belgeler klasöründe bir dosya oluştur
